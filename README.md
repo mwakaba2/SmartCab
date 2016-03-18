@@ -2,6 +2,10 @@
 
 Reinforcement Learning Project
 
+## Project Report Link
+ 
+<a href="https://docs.google.com/document/d/1whI8KtpJBFP9NWQkL2nuLtUf2JPoC6sNieEIw67uE1I/edit?usp=sharing">Smartcab Report</a>
+
 ## Install
 
 This project requires Python 2.7 with the pygame library installed:
