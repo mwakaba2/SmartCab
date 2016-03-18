@@ -10,7 +10,7 @@ class LearningAgent(Agent):
         super(LearningAgent, self).__init__(env)  # sets self.env = env, state = None, next_waypoint = None, and a default color
         self.color = 'red'  # override color
         self.planner = RoutePlanner(self.env, self)  # simple route planner to get next_waypoint
-        # TODO: Initialize any additional variables here
+        self.q_values = {}
 
     def reset(self, destination=None):
         self.planner.route_to(destination)
@@ -22,11 +22,10 @@ class LearningAgent(Agent):
         inputs = self.env.sense(self)
         deadline = self.env.get_deadline(self)
 
-        # TODO: Update state
+        # Update state
         self.state = (self.next_waypoint, inputs['light'], inputs['oncoming'], inputs['left'], inputs['right'])
 
-        # TODO: Select action according to your policy
-        action = random.choice(self.env.valid_actions)
+        action = self.choose_best_action(self.state)
 
         # Execute action and get reward
         reward = self.env.act(self, action)
@@ -34,6 +33,23 @@ class LearningAgent(Agent):
         # TODO: Learn policy based on state, action, reward
         print "LearningAgent.update(): deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
 
+    def choose_best_action(self, state):
+        q_lst = [self.get_q_value(state, action) for action in Environment.valid_actions]
+        max_q = max(q_lst)
+
+        # If there are multiple max_q, pick a random one
+        if q_lst.count(max_q) > 1:
+            max_q_lst = [i for i in range(len(Environment.valid_actions)) if q_lst[i] == max_q]
+            idx = random.choice(max_q_lst)
+        else:
+            idx = q_lst.index(max_q)
+
+        action = Environment.valid_actions[idx]
+
+        return action
+
+    def get_q_value(self, state, action):
+        return self.q_values.get((state, action), 0.0)
 
 def run():
     """Run the agent for a finite number of trials."""
