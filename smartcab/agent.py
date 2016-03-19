@@ -23,19 +23,32 @@ class LearningAgent(Agent):
         deadline = self.env.get_deadline(self)
 
         # Update state
-        self.state = (self.next_waypoint, inputs['light'], inputs['oncoming'], inputs['left'], inputs['right'])
+        curr_state = (self.next_waypoint, inputs['light'], inputs['oncoming'], inputs['left'], inputs['right'])
+        self.state = curr_state
 
-        action = self.choose_best_action(self.state)
+        old_q, action = self.choose_best_action(self.state)
 
         # Execute action and get reward
         reward = self.env.act(self, action)
 
-        # TODO: Learn policy based on state, action, reward
-        print "LearningAgent.update(): deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
+        # Sense the environment, and obtain new state
+        new_inputs = self.env.sense(self)
+        new_state = (self.next_waypoint, new_inputs['light'], new_inputs['oncoming'], new_inputs['left'], new_inputs['right'])
+
+        # Update the Q table
+        new_q_val = self.calculate_q_val(new_state, old_q, reward)
+
+        self.q_values[(curr_state, action)] = new_q_val
+
+        print "LearningAgent.update(): deadline = {}, inputs = {}, action = {}, reward = {}, waypoint = {}".format(deadline, inputs, action, reward, self.next_waypoint)  # [debug]
+
+    def get_max_q(self, new_state):
+        q = [self.get_q_value(new_state, action) for action in Environment.valid_actions]
+        max_q = max(q)
+        return max_q, q
 
     def choose_best_action(self, state):
-        q_lst = [self.get_q_value(state, action) for action in Environment.valid_actions]
-        max_q = max(q_lst)
+        max_q, q_lst = self.get_max_q(state)
 
         # If there are multiple max_q, pick a random one
         if q_lst.count(max_q) > 1:
@@ -46,10 +59,23 @@ class LearningAgent(Agent):
 
         action = Environment.valid_actions[idx]
 
-        return action
+        return max_q, action
 
     def get_q_value(self, state, action):
-        return self.q_values.get((state, action), 0.0)
+        return self.q_values.get((state, action), 1)
+
+    def calculate_q_val(self, new_state, old_q, reward):
+        # learning rate
+        alpha = 0.5
+        # discount factor
+        gamma = 0.5
+        # learned value
+        learned_val = reward + (gamma * self.get_max_q(new_state)[0])
+
+        new_q = old_q + alpha * (learned_val - old_q)
+
+        return new_q
+
 
 def run():
     """Run the agent for a finite number of trials."""
@@ -60,8 +86,8 @@ def run():
     e.set_primary_agent(a, enforce_deadline=False)  # set agent to track
 
     # Now simulate it
-    sim = Simulator(e, update_delay=1.0)  # reduce update_delay to speed up simulation
-    sim.run(n_trials=10)  # press Esc or close pygame window to quit
+    sim = Simulator(e, update_delay=0.0001)  # reduce update_delay to speed up simulation
+    sim.run(n_trials=30)  # press Esc or close pygame window to quit
 
 
 if __name__ == '__main__':
