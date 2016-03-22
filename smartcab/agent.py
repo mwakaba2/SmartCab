@@ -11,8 +11,11 @@ class LearningAgent(Agent):
         self.color = 'red'  # override color
         self.planner = RoutePlanner(self.env, self)  # simple route planner to get next_waypoint
         self.q_values = {}
-
+        self.penalties = []
+        self.penalty = 0
     def reset(self, destination=None):
+        self.penalties.append(self.penalty)
+        self.penalty = 0
         self.planner.route_to(destination)
         # TODO: Prepare for a new trip; reset any variables here, if required
 
@@ -30,6 +33,10 @@ class LearningAgent(Agent):
 
         # Execute action and get reward
         reward = self.env.act(self, action)
+
+        # calculate penalties
+        if reward < 0:
+            self.penalty += 1
 
         # Sense the environment, and obtain new state
         new_inputs = self.env.sense(self)
@@ -62,17 +69,17 @@ class LearningAgent(Agent):
         return max_q, action
 
     def get_q_value(self, state, action):
-        return self.q_values.get((state, action), 1)
+        return self.q_values.get((state, action), 1.0)
 
     def calculate_q_val(self, new_state, old_q, reward):
         # learning rate
         alpha = 0.5
         # discount factor
-        gamma = 0.5
+        gamma = 0.25
         # learned value
-        learned_val = reward + (gamma * self.get_max_q(new_state)[0])
+        learned_val = reward + (gamma * self.get_max_q(new_state)[0] - old_q)
 
-        new_q = old_q + alpha * (learned_val - old_q)
+        new_q = old_q + alpha * learned_val
 
         return new_q
 
@@ -83,12 +90,12 @@ def run():
     # Set up environment and agent
     e = Environment()  # create environment (also adds some dummy traffic)
     a = e.create_agent(LearningAgent)  # create agent
-    e.set_primary_agent(a, enforce_deadline=False)  # set agent to track
+    e.set_primary_agent(a, enforce_deadline=True)  # set agent to track
 
     # Now simulate it
-    sim = Simulator(e, update_delay=0.0001)  # reduce update_delay to speed up simulation
-    sim.run(n_trials=30)  # press Esc or close pygame window to quit
-
+    sim = Simulator(e, update_delay=0)  # reduce update_delay to speed up simulation
+    sim.run(n_trials=100)  # press Esc or close pygame window to quit
+    print(a.penalties)
 
 if __name__ == '__main__':
     run()
